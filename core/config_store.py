@@ -42,9 +42,18 @@ def _default_config() -> Dict[str, Any]:
             # "notify bot" token used later to push alerts to the admin.
             "notify_token": None,
         },
-        # Reserved for later phases (skeleton kept intentionally empty).
+        # Platform runtime config (3-layer ON/OFF + delivery/membership).
         "platform": {
             "enabled": False,
+            "publish_channels": True,   # L1 — userbot up kênh
+            "archive_index": True,      # L2 — ghi index DB
+            "bot_delivery": True,       # L3 — bot gửi cho user
+            "admin_forum_id": "",
+            "admin_notify_group": "",
+            "delivery_delay_sec": 2,
+            "membership_channel_id": "",
+            "force_join_check_sec": 600,
+            "require_vip_for_archive": False,
         },
     }
 
@@ -139,6 +148,17 @@ def masked_config() -> Dict[str, Any]:
         },
         "platform": {
             "enabled": bool(cfg.get("platform", {}).get("enabled")),
+            "publish_channels": bool(cfg.get("platform", {}).get("publish_channels")),
+            "archive_index": bool(cfg.get("platform", {}).get("archive_index")),
+            "bot_delivery": bool(cfg.get("platform", {}).get("bot_delivery")),
+            "admin_forum_id": cfg.get("platform", {}).get("admin_forum_id", ""),
+            "admin_notify_group": cfg.get("platform", {}).get("admin_notify_group", ""),
+            "delivery_delay_sec": cfg.get("platform", {}).get("delivery_delay_sec", 2),
+            "membership_channel_id": cfg.get("platform", {}).get("membership_channel_id", ""),
+            "force_join_check_sec": cfg.get("platform", {}).get("force_join_check_sec", 600),
+            "require_vip_for_archive": bool(
+                cfg.get("platform", {}).get("require_vip_for_archive")
+            ),
         },
         "web": {
             "password_set": bool(cfg.get("web", {}).get("password_hash")),
