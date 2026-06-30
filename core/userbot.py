@@ -197,6 +197,79 @@ class UserbotManager:
             bus.log("Userbot đã DỪNG.", level="warning", source="userbot")
             return self.snapshot()
 
+    # ----------------------------------------------------- forward pipeline
+    def is_online(self) -> bool:
+        return self.status == "online" and self._client is not None
+
+    async def run_topic(self, topic: Dict[str, Any]) -> Dict[str, Any]:
+        """Forward the latest N messages of one source to the publish channel,
+        then index them (respecting L1 publish_channels and L2 archive_index).
+        """
+        from research_platform import archive_index, dates  # local import (avoid cycle)
+
+        if not self.is_online():
+            raise UserbotError("Userbot chưa online. Hãy START trước.")
+        cfg = config_store.load_config().get("platform", {})
+        if not cfg.get("enabled"):
+            raise UserbotError("Platform chưa bật (enabled).")
+
+        src = topic.get("source_chat")
+        if not src:
+            raise UserbotError("Thiếu source_chat trong topic.")
+        limit = int(topic.get("limit", 5) or 5)
+        publish = cfg.get("publish_channel", "")
+        label = dates.topic_label_vn()
+        do_publish = bool(cfg.get("publish_channels", True)) and bool(publish)
+        do_index = bool(cfg.get("archive_index", True))
+
+        try:
+            src_id: Any = int(src)
+        except (TypeError, ValueError):
+            src_id = src  # @username
+
+        count = 0
+        # get_chat_history yields newest-first; reverse to keep chronological seq.
+        messages = []
+        async for msg in self._client.get_chat_history(src_id, limit=limit):
+            messages.append(msg)
+        for msg in reversed(messages):
+            try:
+                if do_publish:
+                    published = await msg.copy(int(publish))  # copy keeps ads (A1)
+                    pub_chat, pub_id = str(publish), published.id
+                else:
+                    pub_chat, pub_id = str(src_id), msg.id
+                if do_index:
+                    archive_index.index_item(
+                        label, pub_chat, pub_id, caption=(msg.caption or msg.text or "")[:300]
+                    )
+                count += 1
+            except Exception as exc:
+                bus.log(f"run_topic lỗi 1 msg: {exc}", level="error", source="forward")
+        bus.log(f"run_topic '{topic.get('label', src)}' xong: {count} bài → {label}", source="forward")
+        return {"label": label, "forwarded": count}
+
+    async def run_all_topics(self) -> Dict[str, Any]:
+        cfg = config_store.load_config().get("platform", {})
+        topics = cfg.get("topic_map", []) or []
+        if not topics:
+            raise UserbotError("topic_map trống. Hãy thêm nguồn ở tab Lịch/Topic.")
+        total = 0
+        label = None
+        for topic in topics:
+            res = await self.run_topic(topic)
+            total += res["forwarded"]
+            label = res["label"]
+        # Admin notify after the round.
+        try:
+            from research_platform import notify
+            await notify.admin_notify(
+                f"✅ Auto round xong: {total} bài cho ngày {label} ({len(topics)} nguồn)."
+            )
+        except Exception:
+            pass
+        return {"label": label, "forwarded": total, "topics": len(topics)}
+
     async def logout(self) -> Dict[str, Any]:
         """Stop the userbot and clear the saved session."""
         await self.stop()

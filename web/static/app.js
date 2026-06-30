@@ -19,8 +19,9 @@ const getJSON = (p) => fetch(p).then((r) => r.json());
 
 const TITLES = {
   overview: "Tổng quan", telegram: "Telegram", userbot: "Userbot", platform: "Platform",
-  archive: "Kho lưu trữ", bots: "Bots (tối đa 10)", users: "Users", vip: "VIP & Stars",
-  gift: "Giftcode", ads: "Ads", share: "Share", backup: "Backup", rollup: "Rollup", logs: "Logs",
+  forward: "Lịch & Topic", archive: "Kho lưu trữ", bots: "Bots (tối đa 10)", users: "Users",
+  vip: "VIP & Stars", gift: "Giftcode", ads: "Ads", share: "Share", backup: "Backup",
+  rollup: "Rollup", logs: "Logs",
 };
 
 // --------------------------------------------------------- navigation
@@ -65,6 +66,9 @@ async function refreshConfig() {
   $("pf_admin_forum").value = p.admin_forum_id || ""; $("pf_admin_notify").value = p.admin_notify_group || "";
   $("pf_delay").value = p.delivery_delay_sec; $("pf_member").value = p.membership_channel_id || "";
   $("pf_recheck").value = p.force_join_check_sec;
+  $("pf_publish_ch").value = p.publish_channel || ""; $("pf_catalog").value = p.catalog_channel || "";
+  $("pf_backup_ch").value = p.backup_channel || ""; $("pf_sched").checked = p.schedule_enabled;
+  $("pf_sched_int").value = p.schedule_interval_sec; $("pf_bk_hours").value = p.backup_interval_hours;
 }
 LOADERS.telegram = refreshConfig;
 LOADERS.platform = refreshConfig;
@@ -99,9 +103,30 @@ $("save_pf").onclick = async () => {
     require_vip_for_archive: $("pf_vip").checked, admin_forum_id: $("pf_admin_forum").value,
     admin_notify_group: $("pf_admin_notify").value, delivery_delay_sec: $("pf_delay").value,
     membership_channel_id: $("pf_member").value, force_join_check_sec: $("pf_recheck").value,
+    publish_channel: $("pf_publish_ch").value, catalog_channel: $("pf_catalog").value,
+    backup_channel: $("pf_backup_ch").value, schedule_enabled: $("pf_sched").checked,
+    schedule_interval_sec: $("pf_sched_int").value, backup_interval_hours: $("pf_bk_hours").value,
   });
   if (!ok) return alert(json.error || "Lỗi"); alert("Đã lưu Platform."); refreshConfig();
 };
+$("notify_test").onclick = async () => { const { ok, json } = await api("/api/notify/test"); alert(ok ? "Đã gửi notify." : (json.error || "Lỗi")); };
+
+// ----------------------------------------------------------- forward / lịch
+LOADERS.forward = async () => {
+  const d = await getJSON("/api/forward/topics");
+  const s = d.scheduler;
+  $("sched_state").textContent = `Scheduler: ${s.running ? "đang chạy" : "tắt"} · lịch ${s.schedule_enabled ? "BẬT" : "tắt"} · mỗi ${s.interval_sec}s · backup mỗi ${s.backup_interval_hours}h`;
+  $("tm_table").innerHTML = (d.topic_map && d.topic_map.length)
+    ? `<table><tr><th>Label</th><th>source_chat</th><th>topic</th><th>limit</th></tr>` +
+      d.topic_map.map((t) => `<tr><td>${esc(t.label)}</td><td>${esc(t.source_chat)}</td><td>${esc(t.source_topic)}</td><td>${t.limit}</td></tr>`).join("") + `</table>`
+    : '<p class="muted">Chưa có nguồn. publish_channel: ' + esc(d.publish_channel || "(chưa đặt)") + '</p>';
+};
+$("tm_add").onclick = async () => {
+  const { ok, json } = await api("/api/forward/topics", { source_chat: $("tm_chat").value, source_topic: $("tm_topic").value, limit: $("tm_limit").value || 5, label: $("tm_label").value });
+  if (!ok) return alert(json.error || "Lỗi"); $("tm_chat").value = ""; LOADERS.forward();
+};
+$("tm_clear").onclick = async () => { if (!confirm("Xoá hết nguồn?")) return; await api("/api/forward/topics/clear"); LOADERS.forward(); };
+$("run_now").onclick = async () => { const { ok, json } = await api("/api/forward/run"); alert(ok ? `Đã chạy: ${json.forwarded} bài ngày ${json.label}` : (json.error || "Lỗi")); };
 
 // ----------------------------------------------------------- userbot
 function applyStatus(s) {
@@ -215,6 +240,7 @@ LOADERS.ads = async () => {
 };
 window.revokeAd = async (id) => { await api("/api/ads/revoke", { ad_id: id }); LOADERS.ads(); };
 $("add_ad").onclick = async () => { const { ok, json } = await api("/api/ads", { advertiser: $("ad_adv").value, alias: $("ad_alias").value, content: $("ad_content").value, start_label: $("ad_start").value, end_label: $("ad_end").value }); if (!ok) return alert(json.error); LOADERS.ads(); };
+$("recheck_ads").onclick = async () => { const { json } = await api("/api/ads/recheck"); alert(`Đã tắt ${json.deactivated} ads hết hạn.`); LOADERS.ads(); };
 
 // ----------------------------------------------------------- share
 LOADERS.share = async () => {
@@ -234,9 +260,11 @@ LOADERS.backup = async () => {
     : '<p class="muted">Chưa có backup.</p>';
 };
 $("make_backup").onclick = async () => { const { ok, json } = await api("/api/backup/create"); if (!ok) return alert(json.error); alert("Đã tạo: " + json.name); LOADERS.backup(); };
+$("send_backup").onclick = async () => { const { ok, json } = await api("/api/backup/send"); if (!ok) return alert(json.error || "Lỗi"); alert(`Đã tạo ${json.name}. Gửi Telegram: ${json.sent_to_telegram ? "OK" : "chưa cấu hình"}`); LOADERS.backup(); };
 
 // ----------------------------------------------------------- rollup
 $("gen_rollup").onclick = async () => { const d = await getJSON("/api/rollup"); $("rollup_out").textContent = d.text; };
+$("post_rollup").onclick = async () => { const { ok, json } = await api("/api/rollup/post"); alert(ok ? "Đã post lên catalog." : (json.error || "Lỗi")); };
 LOADERS.rollup = async () => { const d = await getJSON("/api/rollup"); $("rollup_out").textContent = d.text; };
 
 // ----------------------------------------------------------- logs SSE

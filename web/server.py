@@ -26,8 +26,10 @@ from research_platform import (
     bot_manager,
     db,
     dates,
+    notify,
     rollup,
     run_queue,
+    scheduler,
 )
 from web import security
 
@@ -44,6 +46,7 @@ async def _startup() -> None:
     db.init_db()
     bus.bind_loop(asyncio.get_running_loop())
     attach_stdlib_logging()
+    scheduler.start()
     bus.log("Web server đã sẵn sàng tại http://127.0.0.1:8080", source="app")
 
 
@@ -162,10 +165,18 @@ async def save_platform(
     membership_channel_id: str = Form(""),
     force_join_check_sec: str = Form("600"),
     require_vip_for_archive: str = Form("false"),
+    publish_channel: str = Form(""),
+    catalog_channel: str = Form(""),
+    backup_channel: str = Form(""),
+    schedule_enabled: str = Form("false"),
+    schedule_interval_sec: str = Form("3600"),
+    backup_interval_hours: str = Form("24"),
 ):
     try:
         delay = int(float(delivery_delay_sec))
         recheck = int(float(force_join_check_sec))
+        sched = int(float(schedule_interval_sec))
+        bkhours = int(float(backup_interval_hours))
     except ValueError:
         raise HTTPException(status_code=400, detail="Giá trị số không hợp lệ.")
     config_store.update_section("platform", {
@@ -179,6 +190,12 @@ async def save_platform(
         "membership_channel_id": membership_channel_id.strip(),
         "force_join_check_sec": recheck,
         "require_vip_for_archive": _b(require_vip_for_archive),
+        "publish_channel": publish_channel.strip(),
+        "catalog_channel": catalog_channel.strip(),
+        "backup_channel": backup_channel.strip(),
+        "schedule_enabled": _b(schedule_enabled),
+        "schedule_interval_sec": sched,
+        "backup_interval_hours": bkhours,
     })
     bus.log("Đã lưu cấu hình Platform (3 lớp + delivery/membership).", source="app")
     return JSONResponse(config_store.masked_config())
@@ -547,3 +564,83 @@ async def backup_download(name: str, request: Request):
         raise HTTPException(404, "Không tìm thấy backup.")
     from fastapi.responses import FileResponse
     return FileResponse(path, filename=name, media_type="application/zip")
+
+
+# ------------------------------------------------- forward pipeline + lịch
+@app.get("/api/forward/topics")
+async def forward_topics(_: None = Depends(require_login)):
+    cfg = config_store.load_config().get("platform", {})
+    return JSONResponse({
+        "topic_map": cfg.get("topic_map", []),
+        "publish_channel": cfg.get("publish_channel", ""),
+        "scheduler": scheduler.status(),
+    })
+
+
+@app.post("/api/forward/topics")
+async def forward_topics_save(
+    _: None = Depends(require_login),
+    source_chat: str = Form(...),
+    source_topic: str = Form(""),
+    limit: int = Form(5),
+    label: str = Form(""),
+):
+    cfg = config_store.load_config()
+    topics = cfg.get("platform", {}).get("topic_map", []) or []
+    topics.append({
+        "source_chat": source_chat.strip(),
+        "source_topic": source_topic.strip(),
+        "limit": int(limit),
+        "label": label.strip() or source_chat.strip(),
+    })
+    config_store.update_section("platform", {"topic_map": topics})
+    bus.log(f"Thêm topic nguồn: {source_chat}", source="forward")
+    return JSONResponse({"ok": True, "topic_map": topics})
+
+
+@app.post("/api/forward/topics/clear")
+async def forward_topics_clear(_: None = Depends(require_login)):
+    config_store.update_section("platform", {"topic_map": []})
+    return JSONResponse({"ok": True})
+
+
+@app.post("/api/forward/run")
+async def forward_run(_: None = Depends(require_login)):
+    try:
+        res = await manager.run_all_topics()
+    except UserbotError as exc:
+        return _ub_error(exc)
+    return JSONResponse({"ok": True, **res})
+
+
+# ------------------------------------------------------------- ads recheck
+@app.post("/api/ads/recheck")
+async def ads_recheck(_: None = Depends(require_login)):
+    n = db.recheck_ads()
+    bus.log(f"Recheck ads: {n} hợp đồng hết hạn đã tắt.", source="ads")
+    return JSONResponse({"ok": True, "deactivated": n})
+
+
+# ----------------------------------------------------- rollup post + notify
+@app.post("/api/rollup/post")
+async def rollup_post(_: None = Depends(require_login)):
+    ok = await rollup.post_to_catalog()
+    return JSONResponse({"ok": ok, "error": None if ok else "Chưa cấu hình catalog_channel/notify bot."},
+                        status_code=200 if ok else 400)
+
+
+@app.post("/api/notify/test")
+async def notify_test(_: None = Depends(require_login)):
+    ok = await notify.admin_notify("🔔 Test notify từ UpBain dashboard.")
+    return JSONResponse({"ok": ok, "error": None if ok else "Chưa cấu hình admin_notify_group/notify bot."},
+                        status_code=200 if ok else 400)
+
+
+# ------------------------------------------------- backup send to telegram
+@app.post("/api/platform/backup")
+@app.post("/api/backup/send")
+async def backup_send(_: None = Depends(require_login)):
+    path = backup.create_backup_file()
+    ok = await notify.send_document(path, caption="Backup UpBain (thủ công)")
+    bus.log(f"Backup {os.path.basename(path)} — gửi Telegram: {ok}", source="backup")
+    return JSONResponse({"ok": True, "name": os.path.basename(path), "sent_to_telegram": ok})

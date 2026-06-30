@@ -51,6 +51,14 @@ delivery, membership, VIP/Stars, giftcode, ads, share, backup, rollup.
   the bot must be a member of the source chat; without tokens the bot stays
   `stopped`. All non-Telegram management (days, VIP, gift, ads, share, backup,
   rollup) is fully testable in the browser with no credentials.
+- A background **scheduler** (`research_platform/scheduler.py`) starts with the
+  app and ticks every 30s; it runs auto-forward rounds (when `schedule_enabled` +
+  `enabled`) and periodic backups. The forward pipeline (`Lịch & Topic` tab →
+  topic_map + publish_channel, or `/runtopic` via "Chạy 1 lượt ngay") needs the
+  userbot ONLINE; it copies the latest N source messages to `publish_channel`
+  then indexes them. Telegram-dependent actions (run forward, notify, rollup post,
+  backup→Telegram, Stars payment) all **fail gracefully** with a clear message
+  when creds/targets are not configured, so the dashboard stays usable.
 - Telegram login is **fully web-driven** (no terminal prompt): phone → code →
   optional 2FA password, handled by `core/userbot.py`. A successful login exports
   a Pyrogram **session string** saved to `auto_config.json`; the userbot can then

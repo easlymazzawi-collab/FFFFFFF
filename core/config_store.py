@@ -54,6 +54,15 @@ def _default_config() -> Dict[str, Any]:
             "membership_channel_id": "",
             "force_join_check_sec": 600,
             "require_vip_for_archive": False,
+            # Forward pipeline + scheduler.
+            "publish_channel": "",      # đích userbot up kênh
+            "catalog_channel": "",      # nơi post rollup mục lục
+            "backup_channel": "",       # nơi gửi ZIP backup
+            "schedule_enabled": False,
+            "schedule_interval_sec": 3600,
+            "backup_interval_hours": 24,
+            # topic_map: [{source_chat, source_topic, limit, label}]
+            "topic_map": [],
         },
     }
 
@@ -159,6 +168,13 @@ def masked_config() -> Dict[str, Any]:
             "require_vip_for_archive": bool(
                 cfg.get("platform", {}).get("require_vip_for_archive")
             ),
+            "publish_channel": cfg.get("platform", {}).get("publish_channel", ""),
+            "catalog_channel": cfg.get("platform", {}).get("catalog_channel", ""),
+            "backup_channel": cfg.get("platform", {}).get("backup_channel", ""),
+            "schedule_enabled": bool(cfg.get("platform", {}).get("schedule_enabled")),
+            "schedule_interval_sec": cfg.get("platform", {}).get("schedule_interval_sec", 3600),
+            "backup_interval_hours": cfg.get("platform", {}).get("backup_interval_hours", 24),
+            "topic_map": cfg.get("platform", {}).get("topic_map", []),
         },
         "web": {
             "password_set": bool(cfg.get("web", {}).get("password_hash")),

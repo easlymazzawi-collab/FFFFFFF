@@ -19,6 +19,7 @@
       <button class="navitem" data-view="telegram"><span>📱</span> Telegram</button>
       <button class="navitem" data-view="userbot"><span>🤖</span> Userbot</button>
       <button class="navitem" data-view="platform"><span>⚙️</span> Platform</button>
+      <button class="navitem" data-view="forward"><span>⏰</span> Lịch & Topic</button>
       <button class="navitem" data-view="archive"><span>🗂️</span> Kho lưu trữ</button>
       <button class="navitem" data-view="bots"><span>🛰️</span> Bots (10)</button>
       <button class="navitem" data-view="users"><span>👥</span> Users</button>
@@ -116,14 +117,45 @@
           <label class="switch"><input type="checkbox" id="pf_delivery" /> <span>L3 · bot_delivery (bot gửi user)</span></label>
           <label class="switch"><input type="checkbox" id="pf_vip" /> <span>require_vip_for_archive</span></label>
           <div class="grid2">
+            <div class="field"><label>publish_channel (đích up kênh)</label><input id="pf_publish_ch" /></div>
+            <div class="field"><label>catalog_channel (post rollup)</label><input id="pf_catalog" /></div>
+            <div class="field"><label>backup_channel (gửi ZIP)</label><input id="pf_backup_ch" /></div>
             <div class="field"><label>admin_forum_id</label><input id="pf_admin_forum" /></div>
             <div class="field"><label>admin_notify_group</label><input id="pf_admin_notify" /></div>
             <div class="field"><label>delivery_delay_sec</label><input id="pf_delay" type="number" /></div>
             <div class="field"><label>membership_channel_id</label><input id="pf_member" /></div>
             <div class="field"><label>force_join_check_sec</label><input id="pf_recheck" type="number" /></div>
           </div>
+          <label class="switch"><input type="checkbox" id="pf_sched" /> <span>schedule_enabled (auto chạy topic theo lịch)</span></label>
+          <div class="grid2">
+            <div class="field"><label>schedule_interval_sec</label><input id="pf_sched_int" type="number" /></div>
+            <div class="field"><label>backup_interval_hours</label><input id="pf_bk_hours" type="number" /></div>
+          </div>
           <button class="btn primary" id="save_pf">Lưu Platform</button>
+          <button class="btn" id="notify_test">Test notify admin</button>
         </div>
+      </section>
+
+      <!-- FORWARD / LỊCH -->
+      <section class="view" id="view-forward">
+        <div class="card">
+          <h2>Topic map (nguồn → up kênh)</h2>
+          <p class="muted">Userbot lấy N bài mới nhất ở nguồn → copy vào <code>publish_channel</code> → ghi index.</p>
+          <div class="grid2">
+            <div class="field"><label>source_chat</label><input id="tm_chat" placeholder="@nguon hoặc -100..." /></div>
+            <div class="field"><label>source_topic (tuỳ chọn)</label><input id="tm_topic" /></div>
+            <div class="field"><label>limit</label><input id="tm_limit" type="number" value="5" /></div>
+            <div class="field"><label>label</label><input id="tm_label" /></div>
+          </div>
+          <button class="btn primary" id="tm_add">Thêm nguồn</button>
+          <button class="btn danger" id="tm_clear">Xoá hết</button>
+        </div>
+        <div class="card">
+          <h2>Chạy &amp; lịch</h2>
+          <p id="sched_state" class="muted"></p>
+          <button class="btn primary" id="run_now">Chạy 1 lượt ngay (/runtopic)</button>
+        </div>
+        <div class="card"><h2>Danh sách nguồn</h2><div id="tm_table"></div></div>
       </section>
 
       <!-- ARCHIVE -->
@@ -227,6 +259,7 @@
           </div>
           <div class="field"><label>content</label><input id="ad_content" /></div>
           <button class="btn primary" id="add_ad">Thêm ads</button>
+          <button class="btn" id="recheck_ads">Recheck (tắt ads hết hạn)</button>
         </div>
         <div class="card"><h2>Danh sách ads</h2><div id="ads_table"></div></div>
       </section>
@@ -247,6 +280,7 @@
         <div class="card">
           <h2>Backup ZIP (DB + config masked + index)</h2>
           <button class="btn primary" id="make_backup">Tạo backup ngay</button>
+          <button class="btn" id="send_backup">Tạo &amp; gửi lên Telegram</button>
         </div>
         <div class="card"><h2>Danh sách backup</h2><div id="backup_table"></div></div>
       </section>
@@ -256,6 +290,7 @@
         <div class="card">
           <h2>Mục lục 30 ngày</h2>
           <button class="btn" id="gen_rollup">Tạo mục lục</button>
+          <button class="btn primary" id="post_rollup">Post lên catalog</button>
           <pre id="rollup_out" class="rollup"></pre>
         </div>
       </section>

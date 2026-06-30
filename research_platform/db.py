@@ -435,6 +435,24 @@ def revoke_ads(ad_id: int) -> None:
         conn.execute("UPDATE ads_contracts SET active=0 WHERE id=?", (ad_id,))
 
 
+def recheck_ads() -> int:
+    """Deactivate contracts whose end_label (DD-MM-YYYY) is in the past. Returns count."""
+    import datetime as _dt
+    today = _dt.datetime.now(_dt.timezone(_dt.timedelta(hours=7))).date()
+    changed = 0
+    with connect() as conn:
+        rows = conn.execute("SELECT id, end_label FROM ads_contracts WHERE active=1").fetchall()
+        for r in rows:
+            try:
+                end = _dt.datetime.strptime(r["end_label"], "%d-%m-%Y").date()
+            except (ValueError, TypeError):
+                continue
+            if end < today:
+                conn.execute("UPDATE ads_contracts SET active=0 WHERE id=?", (r["id"],))
+                changed += 1
+    return changed
+
+
 def active_ad_aliases() -> List[str]:
     with connect() as conn:
         rows = conn.execute(
@@ -472,6 +490,18 @@ def share_leaderboard(limit: int = 20) -> List[Dict[str, Any]]:
     with connect() as conn:
         cur = conn.execute(
             "SELECT * FROM share_refs ORDER BY joined DESC, clicks DESC LIMIT ?", (limit,)
+        )
+        return _rows(cur)
+
+
+def search_items(keyword: str, limit: int = 20) -> List[Dict[str, Any]]:
+    like = f"%{keyword}%"
+    with connect() as conn:
+        cur = conn.execute(
+            """SELECT i.*, d.label AS day_label, d.status AS day_status
+               FROM day_items i JOIN days d ON d.id = i.day_id
+               WHERE i.caption LIKE ? ORDER BY i.id DESC LIMIT ?""",
+            (like, limit),
         )
         return _rows(cur)
 
