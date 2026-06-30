@@ -1,0 +1,14 @@
+# Runtime data (config, sessions, db) — never commit secrets
+/data/
+*.session
+*.session-journal
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+
+# OS / editor
+.DS_Store

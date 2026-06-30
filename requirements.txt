@@ -1,0 +1,11 @@
+# UpBain Research Platform v2 — Phase 0 (Foundation) dependencies
+# Web framework + server
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+jinja2==3.1.5
+python-multipart==0.0.20
+itsdangerous==2.2.0
+
+# Telegram userbot (MTProto)
+pyrofork==2.3.62
+tgcrypto==1.2.5

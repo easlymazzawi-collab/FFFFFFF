@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>UpBain · Dashboard</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand small">
+      <span class="logo">UB</span>
+      <div>
+        <strong>UpBain Research Platform v2</strong>
+        <span class="muted"> · Phase 0</span>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <span id="ub-pill" class="pill stopped">● userbot: stopped</span>
+      <form method="post" action="/logout"><button class="btn ghost">Đăng xuất</button></form>
+    </div>
+  </header>
+
+  <main class="layout">
+    <section class="col">
+      <nav class="tabs">
+        <button class="tab active" data-tab="telegram">Telegram</button>
+        <button class="tab" data-tab="bot">Bot</button>
+        <button class="tab" data-tab="userbot">Userbot</button>
+      </nav>
+
+      <!-- TAB: Telegram -->
+      <div class="tabpane active" id="tab-telegram">
+        <div class="card">
+          <h2>API Telegram</h2>
+          <p class="muted">Lấy tại my.telegram.org. Lưu vào <code>data/auto_config.json</code> (không dùng .env).</p>
+          <div class="field"><label>api_id</label><input id="api_id" placeholder="vd: 1234567" /></div>
+          <div class="field"><label>api_hash</label><input id="api_hash" placeholder="vd: 0123ab...def" />
+            <small id="api_hash_hint" class="muted"></small></div>
+          <button class="btn primary" id="save_tg">Lưu API</button>
+        </div>
+
+        <div class="card">
+          <h2>Đăng nhập Telegram (userbot)</h2>
+          <p class="muted">Toàn bộ thao tác trên web: số điện thoại → mã → mật khẩu 2FA (nếu có).</p>
+
+          <div id="login_state" class="badge"></div>
+
+          <div class="field"><label>Số điện thoại</label>
+            <input id="phone" placeholder="+8490xxxxxxx" /></div>
+          <button class="btn" id="send_code">Gửi mã</button>
+
+          <div id="code_box" class="hidden">
+            <div class="field"><label>Mã xác nhận</label>
+              <input id="code" placeholder="Mã Telegram gửi tới app/SMS" /></div>
+            <button class="btn" id="sign_in">Xác nhận mã</button>
+          </div>
+
+          <div id="pwd_box" class="hidden">
+            <div class="field"><label>Mật khẩu 2FA</label>
+              <input id="tfa" type="password" placeholder="Mật khẩu hai lớp" /></div>
+            <button class="btn" id="check_pwd">Xác nhận 2FA</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB: Bot -->
+      <div class="tabpane" id="tab-bot">
+        <div class="card">
+          <h2>Notify bot</h2>
+          <p class="muted">Token bot dùng để thông báo (Phase sau dùng để giao hàng).</p>
+          <div class="field"><label>Bot token</label>
+            <input id="notify_token" placeholder="123456:ABC-..." />
+            <small id="notify_hint" class="muted"></small></div>
+          <button class="btn primary" id="save_bot">Lưu token</button>
+        </div>
+      </div>
+
+      <!-- TAB: Userbot -->
+      <div class="tabpane" id="tab-userbot">
+        <div class="card">
+          <h2>Điều khiển userbot</h2>
+          <p>Trạng thái: <span id="ub_status" class="badge">—</span></p>
+          <p id="ub_user" class="muted"></p>
+          <div class="row">
+            <button class="btn primary" id="btn_start">START</button>
+            <button class="btn danger" id="btn_stop">STOP</button>
+            <button class="btn ghost" id="btn_logout_tg">Đăng xuất Telegram</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="col">
+      <div class="card logs">
+        <div class="logs-head">
+          <h2>Log (SSE realtime)</h2>
+          <span id="sse_dot" class="pill stopped">● live</span>
+        </div>
+        <div id="log_view" class="log-view"></div>
+      </div>
+    </section>
+  </main>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

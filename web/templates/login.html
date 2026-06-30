@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>UpBain · Đăng nhập</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body class="center">
+  <form class="card auth-card" method="post" action="/login">
+    <div class="brand">
+      <span class="logo">UB</span>
+      <div>
+        <h1>UpBain Research Platform</h1>
+        <p class="muted">v2 · Phase 0 · Foundation</p>
+      </div>
+    </div>
+
+    {% if setup %}
+      <p class="hint">Lần đầu chạy — hãy đặt <b>mật khẩu web</b> để bảo vệ dashboard.</p>
+    {% else %}
+      <p class="hint">Nhập mật khẩu web để vào dashboard.</p>
+    {% endif %}
+
+    {% if error %}<p class="error">{{ error }}</p>{% endif %}
+
+    <label>Mật khẩu web</label>
+    <input type="password" name="password" autofocus required
+           placeholder="{{ 'Đặt mật khẩu mới…' if setup else 'Mật khẩu…' }}" />
+
+    <button type="submit" class="btn primary">
+      {{ 'Tạo & vào dashboard' if setup else 'Đăng nhập' }}
+    </button>
+  </form>
+</body>
+</html>
