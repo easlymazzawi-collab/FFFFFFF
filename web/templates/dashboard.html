@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>UpBain · Dashboard</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+<div class="app">
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="brand">
+      <span class="logo">UB</span>
+      <div><strong>UpBain</strong><div class="muted">Research v2</div></div>
+    </div>
+    <nav class="nav">
+      <button class="navitem active" data-view="overview"><span>📊</span> Tổng quan</button>
+      <button class="navitem" data-view="telegram"><span>📱</span> Telegram</button>
+      <button class="navitem" data-view="userbot"><span>🤖</span> Userbot</button>
+      <button class="navitem" data-view="platform"><span>⚙️</span> Platform</button>
+      <button class="navitem" data-view="forward"><span>⏰</span> Lịch & Topic</button>
+      <button class="navitem" data-view="archive"><span>🗂️</span> Kho lưu trữ</button>
+      <button class="navitem" data-view="bots"><span>🛰️</span> Bots (10)</button>
+      <button class="navitem" data-view="users"><span>👥</span> Users</button>
+      <button class="navitem" data-view="vip"><span>⭐</span> VIP & Stars</button>
+      <button class="navitem" data-view="gift"><span>🎁</span> Giftcode</button>
+      <button class="navitem" data-view="ads"><span>📢</span> Ads</button>
+      <button class="navitem" data-view="share"><span>🔗</span> Share</button>
+      <button class="navitem" data-view="backup"><span>💾</span> Backup</button>
+      <button class="navitem" data-view="rollup"><span>📚</span> Rollup</button>
+      <button class="navitem" data-view="logs"><span>📜</span> Logs</button>
+    </nav>
+    <form method="post" action="/logout" class="logout-form">
+      <button class="btn ghost full">Đăng xuất</button>
+    </form>
+  </aside>
+
+  <!-- Main -->
+  <main class="main">
+    <header class="topbar">
+      <div id="view-title">Tổng quan</div>
+      <div class="topbar-right">
+        <span id="today-pill" class="pill">VN: —</span>
+        <span id="ub-pill" class="pill stopped">● userbot: stopped</span>
+        <span id="sse_dot" class="pill stopped">● live</span>
+      </div>
+    </header>
+
+    <div class="content">
+      <!-- OVERVIEW -->
+      <section class="view active" id="view-overview">
+        <div class="stat-grid" id="stat-grid"></div>
+        <div class="card">
+          <h2>Bắt đầu nhanh</h2>
+          <ol class="muted steps">
+            <li>Tab <b>Telegram</b>: nhập api_id/api_hash → đăng nhập userbot.</li>
+            <li>Tab <b>Platform</b>: bật <b>enabled</b> + 3 lớp (publish / archive / delivery).</li>
+            <li>Tab <b>Kho lưu trữ</b>: ingest bài → Publish ngày.</li>
+            <li>Tab <b>Bots</b>: thêm token bot → START → broadcast.</li>
+          </ol>
+        </div>
+      </section>
+
+      <!-- TELEGRAM -->
+      <section class="view" id="view-telegram">
+        <div class="card">
+          <h2>API Telegram</h2>
+          <p class="muted">Lấy tại my.telegram.org. Lưu vào <code>data/auto_config.json</code> (không .env).</p>
+          <div class="field"><label>api_id</label><input id="api_id" placeholder="vd: 1234567" /></div>
+          <div class="field"><label>api_hash</label><input id="api_hash" placeholder="••••" />
+            <small id="api_hash_hint" class="muted"></small></div>
+          <button class="btn primary" id="save_tg">Lưu API</button>
+        </div>
+        <div class="card">
+          <h2>Đăng nhập Telegram (userbot)</h2>
+          <div id="login_state" class="badge"></div>
+          <div class="field"><label>Số điện thoại</label><input id="phone" placeholder="+8490xxxxxxx" /></div>
+          <button class="btn" id="send_code">Gửi mã</button>
+          <div id="code_box" class="hidden">
+            <div class="field"><label>Mã xác nhận</label><input id="code" placeholder="Mã từ Telegram" /></div>
+            <button class="btn" id="sign_in">Xác nhận mã</button>
+          </div>
+          <div id="pwd_box" class="hidden">
+            <div class="field"><label>Mật khẩu 2FA</label><input id="tfa" type="password" /></div>
+            <button class="btn" id="check_pwd">Xác nhận 2FA</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- USERBOT -->
+      <section class="view" id="view-userbot">
+        <div class="card">
+          <h2>Điều khiển userbot</h2>
+          <p>Trạng thái: <span id="ub_status" class="badge">—</span></p>
+          <p id="ub_user" class="muted"></p>
+          <div class="row">
+            <button class="btn primary" id="btn_start">START</button>
+            <button class="btn danger" id="btn_stop">STOP</button>
+            <button class="btn ghost" id="btn_logout_tg">Đăng xuất Telegram</button>
+          </div>
+        </div>
+        <div class="card">
+          <h2>Mô phỏng auto-forward (test hook)</h2>
+          <p class="muted">Chạy hook <code>after_auto_forward</code> để ghi 1 item vào ngày hôm nay.</p>
+          <button class="btn" id="sim_forward">Chạy 1 lượt forward giả lập</button>
+        </div>
+      </section>
+
+      <!-- PLATFORM -->
+      <section class="view" id="view-platform">
+        <div class="card">
+          <h2>3 lớp ON/OFF + cấu hình</h2>
+          <label class="switch"><input type="checkbox" id="pf_enabled" /> <span>Platform enabled</span></label>
+          <label class="switch"><input type="checkbox" id="pf_publish" /> <span>L1 · publish_channels (userbot up kênh)</span></label>
+          <label class="switch"><input type="checkbox" id="pf_archive" /> <span>L2 · archive_index (ghi DB)</span></label>
+          <label class="switch"><input type="checkbox" id="pf_delivery" /> <span>L3 · bot_delivery (bot gửi user)</span></label>
+          <label class="switch"><input type="checkbox" id="pf_vip" /> <span>require_vip_for_archive</span></label>
+          <div class="grid2">
+            <div class="field"><label>publish_channel (đích up kênh)</label><input id="pf_publish_ch" /></div>
+            <div class="field"><label>catalog_channel (post rollup)</label><input id="pf_catalog" /></div>
+            <div class="field"><label>backup_channel (gửi ZIP)</label><input id="pf_backup_ch" /></div>
+            <div class="field"><label>admin_forum_id</label><input id="pf_admin_forum" /></div>
+            <div class="field"><label>admin_notify_group</label><input id="pf_admin_notify" /></div>
+            <div class="field"><label>delivery_delay_sec</label><input id="pf_delay" type="number" /></div>
+            <div class="field"><label>membership_channel_id</label><input id="pf_member" /></div>
+            <div class="field"><label>force_join_check_sec</label><input id="pf_recheck" type="number" /></div>
+          </div>
+          <label class="switch"><input type="checkbox" id="pf_sched" /> <span>schedule_enabled (auto chạy topic theo lịch)</span></label>
+          <div class="grid2">
+            <div class="field"><label>schedule_interval_sec</label><input id="pf_sched_int" type="number" /></div>
+            <div class="field"><label>backup_interval_hours</label><input id="pf_bk_hours" type="number" /></div>
+          </div>
+          <button class="btn primary" id="save_pf">Lưu Platform</button>
+          <button class="btn" id="notify_test">Test notify admin</button>
+        </div>
+      </section>
+
+      <!-- FORWARD / LỊCH -->
+      <section class="view" id="view-forward">
+        <div class="card">
+          <h2>Topic map (nguồn → up kênh)</h2>
+          <p class="muted">Userbot lấy N bài mới nhất ở nguồn → copy vào <code>publish_channel</code> → ghi index.</p>
+          <div class="grid2">
+            <div class="field"><label>source_chat</label><input id="tm_chat" placeholder="@nguon hoặc -100..." /></div>
+            <div class="field"><label>source_topic (tuỳ chọn)</label><input id="tm_topic" /></div>
+            <div class="field"><label>limit</label><input id="tm_limit" type="number" value="5" /></div>
+            <div class="field"><label>label</label><input id="tm_label" /></div>
+          </div>
+          <button class="btn primary" id="tm_add">Thêm nguồn</button>
+          <button class="btn danger" id="tm_clear">Xoá hết</button>
+        </div>
+        <div class="card">
+          <h2>Chạy &amp; lịch</h2>
+          <p id="sched_state" class="muted"></p>
+          <button class="btn primary" id="run_now">Chạy 1 lượt ngay (/runtopic)</button>
+        </div>
+        <div class="card"><h2>Danh sách nguồn</h2><div id="tm_table"></div></div>
+      </section>
+
+      <!-- ARCHIVE -->
+      <section class="view" id="view-archive">
+        <div class="card">
+          <h2>Ingest bài (ghi index)</h2>
+          <div class="grid2">
+            <div class="field"><label>src_chat_id</label><input id="ig_chat" placeholder="-1001234..." /></div>
+            <div class="field"><label>src_msg_id</label><input id="ig_msg" type="number" placeholder="123" /></div>
+            <div class="field"><label>day_label (trống = hôm nay)</label><input id="ig_day" placeholder="30-06-2026" /></div>
+            <div class="field"><label>caption</label><input id="ig_cap" /></div>
+          </div>
+          <button class="btn primary" id="btn_ingest">Ingest</button>
+        </div>
+        <div class="card">
+          <h2>Danh sách ngày</h2>
+          <div id="days_table"></div>
+        </div>
+        <div class="card hidden" id="day_detail_card">
+          <h2 id="day_detail_title">Chi tiết ngày</h2>
+          <div id="day_items"></div>
+        </div>
+      </section>
+
+      <!-- BOTS -->
+      <section class="view" id="view-bots">
+        <div class="card">
+          <h2>Thêm / sửa bot (tối đa 10)</h2>
+          <div class="grid2">
+            <div class="field"><label>slug</label><input id="bot_slug" placeholder="bot1" /></div>
+            <div class="field"><label>token</label><input id="bot_token" placeholder="123:ABC" /></div>
+            <div class="field"><label>source_forum_id</label><input id="bot_forum" /></div>
+            <div class="field"><label>queue_order</label><input id="bot_order" type="number" value="0" /></div>
+          </div>
+          <button class="btn primary" id="save_bot_btn">Lưu bot</button>
+          <button class="btn" id="start_all">START tất cả</button>
+          <button class="btn danger" id="stop_all">STOP tất cả</button>
+          <button class="btn" id="broadcast">Broadcast ngày publish</button>
+        </div>
+        <div class="card"><h2>Bots</h2><div id="bots_table"></div></div>
+      </section>
+
+      <!-- USERS -->
+      <section class="view" id="view-users">
+        <div class="card">
+          <h2>Cấp VIP thủ công</h2>
+          <div class="grid2">
+            <div class="field"><label>tg_user_id</label><input id="vip_uid" /></div>
+            <div class="field"><label>số ngày</label><input id="vip_days" type="number" value="30" /></div>
+          </div>
+          <button class="btn primary" id="grant_vip">Cấp VIP</button>
+        </div>
+        <div class="card"><h2>Users</h2><div id="users_table"></div></div>
+      </section>
+
+      <!-- VIP -->
+      <section class="view" id="view-vip">
+        <div class="card">
+          <h2>Gói VIP (Stars XTR)</h2>
+          <div class="grid2">
+            <div class="field"><label>Tên</label><input id="plan_name" placeholder="VIP 30 ngày" /></div>
+            <div class="field"><label>Số ngày</label><input id="plan_days" type="number" value="30" /></div>
+            <div class="field"><label>Giá (⭐ Stars)</label><input id="plan_stars" type="number" value="100" /></div>
+          </div>
+          <button class="btn primary" id="add_plan">Thêm gói</button>
+        </div>
+        <div class="card"><h2>Danh sách gói</h2><div id="plans_table"></div></div>
+      </section>
+
+      <!-- GIFT -->
+      <section class="view" id="view-gift">
+        <div class="card">
+          <h2>Tạo giftcode</h2>
+          <div class="grid2">
+            <div class="field"><label>Mã</label><input id="gc_code" placeholder="TET2026" /></div>
+            <div class="field"><label>VIP days</label><input id="gc_days" type="number" value="7" /></div>
+            <div class="field"><label>Max uses</label><input id="gc_max" type="number" value="100" /></div>
+          </div>
+          <button class="btn primary" id="add_gift">Tạo mã</button>
+        </div>
+        <div class="card">
+          <h2>Redeem thử</h2>
+          <div class="grid2">
+            <div class="field"><label>Mã</label><input id="rd_code" /></div>
+            <div class="field"><label>tg_user_id</label><input id="rd_uid" /></div>
+          </div>
+          <button class="btn" id="redeem_gift">Redeem</button>
+        </div>
+        <div class="card"><h2>Giftcodes</h2><div id="gift_table"></div></div>
+      </section>
+
+      <!-- ADS -->
+      <section class="view" id="view-ads">
+        <div class="card">
+          <h2>Hợp đồng quảng cáo</h2>
+          <div class="grid2">
+            <div class="field"><label>advertiser</label><input id="ad_adv" /></div>
+            <div class="field"><label>alias</label><input id="ad_alias" placeholder="@brandX" /></div>
+            <div class="field"><label>start_label</label><input id="ad_start" placeholder="30-06-2026" /></div>
+            <div class="field"><label>end_label</label><input id="ad_end" placeholder="30-07-2026" /></div>
+          </div>
+          <div class="field"><label>content</label><input id="ad_content" /></div>
+          <button class="btn primary" id="add_ad">Thêm ads</button>
+          <button class="btn" id="recheck_ads">Recheck (tắt ads hết hạn)</button>
+        </div>
+        <div class="card"><h2>Danh sách ads</h2><div id="ads_table"></div></div>
+      </section>
+
+      <!-- SHARE -->
+      <section class="view" id="view-share">
+        <div class="card">
+          <h2>Tạo link mời</h2>
+          <div class="field"><label>owner tg_user_id</label><input id="sh_owner" /></div>
+          <button class="btn primary" id="add_share">Tạo ref</button>
+          <p id="sh_token" class="muted"></p>
+        </div>
+        <div class="card"><h2>Bảng xếp hạng share</h2><div id="share_table"></div></div>
+      </section>
+
+      <!-- BACKUP -->
+      <section class="view" id="view-backup">
+        <div class="card">
+          <h2>Backup ZIP (DB + config masked + index)</h2>
+          <button class="btn primary" id="make_backup">Tạo backup ngay</button>
+          <button class="btn" id="send_backup">Tạo &amp; gửi lên Telegram</button>
+        </div>
+        <div class="card"><h2>Danh sách backup</h2><div id="backup_table"></div></div>
+      </section>
+
+      <!-- ROLLUP -->
+      <section class="view" id="view-rollup">
+        <div class="card">
+          <h2>Mục lục 30 ngày</h2>
+          <button class="btn" id="gen_rollup">Tạo mục lục</button>
+          <button class="btn primary" id="post_rollup">Post lên catalog</button>
+          <pre id="rollup_out" class="rollup"></pre>
+        </div>
+      </section>
+
+      <!-- LOGS -->
+      <section class="view" id="view-logs">
+        <div class="card logs">
+          <h2>Log realtime (SSE)</h2>
+          <div id="log_view" class="log-view"></div>
+        </div>
+      </section>
+    </div>
+  </main>
+</div>
+<script src="/static/app.js"></script>
+</body>
+</html>
